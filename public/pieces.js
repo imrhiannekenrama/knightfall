@@ -1,0 +1,12 @@
+/* Original Knightfall Staunton-inspired scalable SVG chess pieces. */
+window.KFPieces=(function(){
+const paths={
+ p:`<circle cx="40" cy="23.5" r="11.2"/><path d="M31.5 36.5c-1 7.6-3.9 12.2-8.2 17.8h33.4c-4.3-5.6-7.2-10.2-8.2-17.8z"/><path d="M25 53.7h30a3 3 0 0 1 3 3v4H22v-4a3 3 0 0 1 3-3z"/><path d="M19.5 61h41a3.5 3.5 0 0 1 3.5 3.5V68H16v-3.5a3.5 3.5 0 0 1 3.5-3.5z"/><path d="M32 39.5h16" class="cut"/>`,
+ r:`<path d="M21 16h8v8h7v-8h8v8h7v-8h8v18H21z"/><path d="M25 34h30l-4 25H29z"/><path d="M23 57h34v5H23z"/><path d="M18 63h44v5H18z"/><path class="cut" d="M26 35h28M30 55h20M36 24v8M44 24v8"/>`,
+ n:`<path d="M22 58c5-9 6-16 4-23-2.5-7 2-12 9-16l6-11 8 3 4 8 8 4-1.5 10-7.5 4-8-4-5 8 12 17H22z"/><path d="M21 58h37v6H21z"/><path d="M17 65h46v4H17z"/><path class="cut" d="M27 35l11-8 13 6M40 42l-4.5 15M25 58h32"/><ellipse cx="47.5" cy="21.5" rx="2.6" ry="3" class="eye"/><path d="M52 31l6 0" class="cut"/>`,
+ b:`<path d="M39.7 10.5c2 3 10.5 11.5 10.5 19.5 0 6-4 11-10.5 13-6.5-2-10.5-7-10.5-13 0-8 8.5-16.5 10.5-19.5z"/><path d="M31 42h18l5 15H26z"/><path d="M24 56h32v6H24z"/><path d="M18 63h44v5H18z"/><path class="cut" d="M47 20L33 35M30 56h20"/><circle cx="40" cy="12" r="3"/>`,
+ q:`<path d="M22 29L28 52h24l6-23-12 10-6-16-6 16z"/><path d="M25 52h30v7H25z"/><path d="M20 60h40v8H20z"/><circle cx="18.5" cy="25" r="5.2"/><circle cx="29" cy="15" r="5.2"/><circle cx="40" cy="11.5" r="5.2"/><circle cx="51" cy="15" r="5.2"/><circle cx="61.5" cy="25" r="5.2"/><path class="cut" d="M26 49h28M28 59h24"/>`,
+ k:`<path d="M36.5 8h7v10h9v7h-9v7h-7v-7h-9v-7h9z"/><path d="M30 30c-2 13-6 20-8 24h36c-2-4-6-11-8-24z"/><path d="M25 53h30v7H25z"/><path d="M20 61h40v7H20z"/><path class="cut" d="M31 30h18M30 53h20M28 60h24"/>`
+};
+function svg(piece,cls=''){if(!piece)return '';const w=piece===piece.toUpperCase(),k=piece.toLowerCase();if(!paths[k])return '';return `<svg class="chess-piece ${cls}" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${w?'White':'Black'} ${({k:'king',q:'queen',r:'rook',b:'bishop',n:'knight',p:'pawn'})[k]}"><defs><filter id="p-shadow-${k}-${w?'w':'b'}" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="1.3" flood-color="#000" flood-opacity=".21"/></filter></defs><g class="piece-shapes ${w?'white-piece':'black-piece'}" filter="url(#p-shadow-${k}-${w?'w':'b'})">${paths[k]}</g></svg>`;}
+return {svg};})();

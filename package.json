@@ -1,0 +1,14 @@
+{
+  "name": "knightfall-arena-vercel",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Knightfall Arena on Vercel + Supabase: online chess tournaments with paid-entry join codes, fair-play review and prize claims.",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "engines": { "node": ">=20" },
+  "license": "MIT"
+}
