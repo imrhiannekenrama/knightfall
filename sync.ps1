@@ -3,7 +3,7 @@ Set-Location "C:\Teacher Ken Files\knightfall\knightfall-arena-vercel"
 Write-Host "Repo: $((Get-Location).Path)"
 $jobs = @(
 [pscustomobject]@{ Path = "public\app.js"; Hash = "4e2158228bcbf483086d4ddf32ff31aea5e391d404a3f2b4057fa9b6a7d4877f"; Gz = @'
-H4sIAFYd3moC/72923LjyJYo9t5fgdLuFsgtECIpqaSiiuJRq6u6a7puU6runj0anRJIgCRaIIACQF22xIgd58ERfr
+H4sIAHsf3moC/72923LjyJYo9t5fgdLuFsgtECIpqaSiiuJRq6u6a7puU6runj0anRJIgCRaIIACQF22xIgd58ERfr
 bHJ8bh8PHTebCf/OSwI/xy/Cf9JV6XzETiQoqq7j2zp0tEIpHXlSvXfZnz1DPSLPFHmXn41SgK08w46V/7oRtd2ydT
 L01PosSz3suiH1++972Rl8q6X/fT/pEbjeYzL8zsz3MvuT31Am+URUkjbVpf0/sz27br6xwHAVQ7l6156Qjrn8J4wk
 kjHQxMs2knXhw4I6+xfbb5/GjDPN+eWKP+UePO3DR75qYziw9Ny3yOv4MMfx7hzwn93MCfn+cRPmyYG/Dwp51nh+bi
@@ -367,7 +367,7 @@ QsdU5+nF3ZjCvQVV18ioeSLBzyyBG4+sPoRlAjMvaM4/qR2cx3p39lj9ggSW4elFzlx3NBIkZoGiYLO3
 igQrqQ/Ohnm5vwj51448RLp4ADSVsZ4Ac5JEE3/z9Wz80qfzcBAA==
 '@ }
 [pscustomobject]@{ Path = "api\[[...path]].js"; Hash = "d1ebaef55e3c7ee60c93cd804ec5612c0191b521c6e00403e2e6434ed58c6307"; Gz = @'
-H4sIAFYd3moC/81923IbR7Lgu7+iFHHiNCABTZC6jA1a1lAU7dFYorSEZO8ZDofTaBTANoHuVl94scyIif2FPS/nM/
+H4sIAHsf3moC/81923IbR7Lgu7+iFHHiNCABTZC6jA1a1lAU7dFYorSEZO8ZDofTaBTANoHuVl94scyIif2FPS/nM/
 Zp3/dT5ks2L1XVVX0BQUmeXUXYbHTXJSsrKyszKzNr6774MY4WZ8U8WC7FXibjQPzzH/8pfpJZKJcil9mFzJYyz8Xe
 25eiNynTYBrkUrxN8mKRybzvfyWEmETxYilFGBTh2RAbmpdxWERJPBYS6l+LrSCNtu6LTH4oZV6ILCkLmYviDB4WZ+
 JMZpLa2YOqL56LIAyxxzKnMpKgiEJ5miXQybm8VmAN82gmd6nENEsu4aVI4uU1NoS9iiJYnkMDCZYAkGU8S5MoLvKB
@@ -541,7 +541,7 @@ MIVUY79z3dKq6WqPoFfZWxqXX1SavHOeXF3xoa+fpwvM8wQvkkFfpJ639/al8lFCc611F8U99DpXeQEn
 ndY97Wla+T+fJMmONqlN3xtBJGulQudFy80l/pwAY7BebY0xer7n71fwFx/4MYBaUAAA==
 '@ }
 [pscustomobject]@{ Path = "supabase\schema.sql"; Hash = "0a55e0f171ceeed4108e290819c67e505e2f1fd60e57c0177dec28e294da6f56"; Gz = @'
-H4sIAFYd3moC/81Z247juBF991cQiwFsL9SXAYIkaKcDzGYayexsena6c3kIAoGWSjbXMqUhKbs9T3nKBwT5wv2SVP
+H4sIAHsf3moC/81Z247juBF991cQiwFsL9SXAYIkaKcDzGYayexsena6c3kIAoGWSjbXMqUhKbs9T3nKBwT5wv2SVP
 EiU7bctnsHg6iBhsVLsXjqVLGKurhg76WYzU3By5K9USA5+/lf/2WPTc2nXAPT2RyWfHBxwR4aycxcaPbh/g93TNAL
 bMe95Xo+rbjK2c///g97/PgDu8uFqRSrJOOsUKDnrFbVT5CZS5L2BpczYgna8GWtGVfAvn9kUFfZnC1FWQoNWSVzzU
 ZTMRPSjC8Hg0wBN8DgyYDUAgWLgsnKYIPQRrNv6lmmNrWpvpkMaInb6GGGT0vQnbZWoO3bEdZoULj4gDGRs6bBf7US
@@ -574,6 +574,13 @@ WsYJt8TTqT2i9I503yepwzKT5DT54U3fKfPimkb2ep5zh6Jnou1JwLub+DO2tSfBN0+qTOfcYzk4iLb7
 BVBtYhprkYMl40poPDCueC2ukDlNjVaN6hESUwil0ZFzzKUws1Ccvjujn2DlZijLAPZw9+btn+9ocZsM/Yq+JuO8v9
 YzxXEVOrJtUoKspLBusLCh/IQXRCH0wwvVyPHNQWrxnKrLslnufpI++mlscr7MU76kTQb/A3Tl6qnZHwAA
 '@ }
+[pscustomobject]@{ Path = "vercel.json"; Hash = "786e6abcd96622689ea553246b8da8504d450bdcfe13eddbbf45e1ef0327e1ef"; Gz = @'
+H4sIAHsf3moC/41SO0/DMBDe8yssL+FRp3sz8hgBAQOoyuA659TgniOfA4qq/nec0Ia0Em2XKPfd97hcbp0wxpcgS/
+DEZ2weS8bW/TM2yDVeQcT59CK7uuSTXeNQMVb1hE9oO9mbuHEYAIN4bWsQj3UwDmnw6alf0jZ9BjpCozUfmpvJCfN7
+L1enXG/vHt7PtnwGDd6DF0/OGtX+Y0ldqvOmMni2824PL6Aab0J7PKEELRsbBHnFUgKr05yZVTWqWSmDnOVMOURQ+0
+xS3tQHUGgtjOVpgyQ1CIPWIKRsGUJNs+lUxzkpq5yrLMjaUKbcKmcdOlYfsCnIYNQv1S0+hnnQReucLSSBiF89ALr/
+bxIVUHCetvhol9u3ItlVRbcn7uE77g6OX2qcOl7r9ehayxhjUHZXMjDm8yzLahmWRcH/UpJN8gNMRN5XEgMAAA==
+'@ }
 )
 
 foreach ($j in $jobs) {
@@ -582,13 +589,13 @@ foreach ($j in $jobs) {
   $gz = [IO.Compression.GZipStream]::new($in, [IO.Compression.CompressionMode]::Decompress)
   $out = [IO.MemoryStream]::new()
   $gz.CopyTo($out)
-  [IO.Directory]::CreateDirectory((Split-Path $j.Path -Parent)) | Out-Null
+  $dir = Split-Path $j.Path -Parent; if ($dir) { [IO.Directory]::CreateDirectory($dir) | Out-Null }
   [IO.File]::WriteAllBytes($j.Path, $out.ToArray())
   $h = (Get-FileHash -LiteralPath $j.Path -Algorithm SHA256).Hash.ToLower()
   if ($h -ne $j.Hash) { Write-Host ("HASH MISMATCH on " + $j.Path) -ForegroundColor Red; exit 1 }
   Write-Host ("verified OK: " + $j.Path) -ForegroundColor Green
 }
 git add -A
-git commit -m "Add tournament rounds and system fields"
+git commit -m "Rounds and system fields; restore API routing rewrite"
 git push
 Write-Host "All done - files synced and pushed." -ForegroundColor Cyan
