@@ -21,8 +21,10 @@ const LESSONS=[
 const state={boot:null,me:null,admin:null,tourney:null,game:null,page:'dashboard',modal:null,authMode:'login',theme:localStorage.getItem('kf_theme')||'walnut',selected:null,flip:null,lesson:0,lessonStep:0,puzzle:0,puzzleStatus:null,analysisGame:null,analysisStep:0,adminTab:'overview',codes:[],reviewCase:null,dragFrom:null,sidebarOpen:false};
 function notify(msg,bad=false){const n=document.createElement('div');n.className='toast'+(bad?' bad':'');n.textContent=msg;$('#toast-layer').appendChild(n);setTimeout(()=>n.remove(),3900)}
 async function request(path,opts={}){const r=await fetch(path,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(opts.headers||{})},...opts});let v;try{v=await r.json()}catch{throw Error('Connection problem. Please retry.')}if(!r.ok)throw Error(v.error||'Request failed');return v}
-async function perform(task,refresh=true){try{const data=await task();if(refresh)await reload();return data}catch(e){notify(e.message,true);return null}}
-async function reload(){state.boot=await request('/api/bootstrap');if(state.boot.user){if(state.page==='profile')state.me=await request('/api/me');if(state.page==='admin')state.admin=await request('/api/admin');}
+async function perform(task,refresh=true){try{const data=await task();if(refresh)await reload(true);return data}catch(e){notify(e.message,true);return null}}
+async function reload(force){const fresh=await request('/api/bootstrap');const sig=JSON.stringify(fresh);
+ if(force!==true&&sig===state._bootSig){state.boot=fresh;return}
+ state._bootSig=sig;state.boot=fresh;if(state.boot.user){if(state.page==='profile')state.me=await request('/api/me');if(state.page==='admin')state.admin=await request('/api/admin');}
  if(state.page==='tournament-detail'&&state.tourney?.id)try{state.tourney=(await request('/api/tournaments/'+state.tourney.id)).tournament}catch{state.tourney=null}
  if(state.page==='play'&&state.game?.id)try{state.game=(await request('/api/games/'+state.game.id)).game;state.game._receivedAt=Date.now()}catch{state.game=null}
  render();}
@@ -32,7 +34,7 @@ function route(){let loc=location.hash.replace(/^#\/?/,'')||'dashboard',parts=lo
  if(state.page==='profile')state.me=null;
  if(state.page==='admin')state.admin=null;
  if(!['dashboard','tournaments','tournament-detail','play','learn','puzzles','analysis','profile','admin'].includes(state.page))state.page='dashboard';
- if(state.boot)reload();}
+ if(state.boot)reload(true);}
 function navTo(p){state.modal=null;state.sidebarOpen=false;if(location.hash==='#/'+p){route();return}location.hash='/'+p}
 const BN=[['dashboard','Overview','dashboard'],['tournaments','Tournaments','trophy'],['learn','Academy','book'],['puzzles','Puzzles','puzzle'],['profile','Profile','user']];
 function bnActive(id){const p=state.page;if(p===id)return true;if(id==='tournaments'&&(p==='tournament-detail'||p==='play'))return true;if(id==='puzzles'&&p==='analysis')return true;return false}
@@ -117,7 +119,7 @@ document.addEventListener('click',async e=>{const b=e.target.closest('[data-act]
  if(a==='retry-boot'){location.reload();return}
  if(a==='login'){openAuth();return}
  if(a==='switch-auth'){state.authMode=state.authMode==='login'?'register':'login';render();return}
- if(a==='logout'){const r=await perform(()=>request('/api/auth/logout',{method:'POST',body:'{}'}),false);if(!r)return;state.me=state.admin=null;state.modal=null;state.boot.user=null;state.analysisGame=null;state.game=null;stopLive();notifState=null;navTo('dashboard');await reload();notify('Signed out successfully.');return}
+ if(a==='logout'){const r=await perform(()=>request('/api/auth/logout',{method:'POST',body:'{}'}),false);if(!r)return;state.me=state.admin=null;state.modal=null;state.boot.user=null;state.analysisGame=null;state.game=null;stopLive();notifState=null;navTo('dashboard');await reload(true);notify('Signed out successfully.');return}
  if(a==='messenger'){messenger();return}
  if(a==='join'){if(!state.boot.user){openAuth();return}const t=state.boot.tournaments.find(x=>x.id===b.dataset.id)||state.tourney;state.modal={type:'join',id:b.dataset.id,name:t?.name||'this event'};render();return}
  if(a==='queue'){const id=b.dataset.id,r=await perform(()=>request(`/api/tournaments/${id}/queue`,{method:'POST',body:'{}'}));if(r){notify(r.gameId?'Opponent found. Good luck!':'You are in the pairing queue.');if(r.gameId)navTo('game/'+r.gameId)}return}
@@ -143,7 +145,7 @@ document.addEventListener('click',async e=>{const b=e.target.closest('[data-act]
  if(a==='copy'){copyText(b.dataset.copy);return}
  if(a==='copy-codes'){copyText(state.codes.join('\n'));return}
  if(a==='admin-tab'){state.adminTab=b.dataset.tab;render();return}
- if(a==='create-codes'){const n=$('#code-count-'+b.dataset.id)?.value||'1';const r=await perform(()=>request(`/api/admin/tournaments/${b.dataset.id}/codes`,{method:'POST',body:JSON.stringify({count:+n})}),false);if(!r)return;state.codes=r.codes;state.modal={type:'codes'};await reload();notify('Codes generated. Copy them now.');return}
+ if(a==='create-codes'){const n=$('#code-count-'+b.dataset.id)?.value||'1';const r=await perform(()=>request(`/api/admin/tournaments/${b.dataset.id}/codes`,{method:'POST',body:JSON.stringify({count:+n})}),false);if(!r)return;state.codes=r.codes;state.modal={type:'codes'};await reload(true);notify('Codes generated. Copy them now.');return}
  if(a==='set-tourney-status'){
   const title=b.dataset.status==='live'?'Start tournament now?':'Finish this tournament?';const message=b.dataset.status==='live'?'Players can begin pairing as soon as the event is live.':'Active games will be recorded as draws, standings finalized, and private award codes issued to top eligible finishers. This cannot be undone.';
   state.modal={type:'confirm',title,message,action:async()=>{const r=await perform(()=>request(`/api/admin/tournaments/${b.dataset.id}/status`,{method:'POST',body:JSON.stringify({status:b.dataset.status})}));if(r)notify('Tournament status updated.')}};render();return;
@@ -154,15 +156,15 @@ document.addEventListener('click',async e=>{const b=e.target.closest('[data-act]
 });
 document.addEventListener('submit',async e=>{const form=e.target.closest('form[data-form]');if(!form)return;e.preventDefault();const a=form.dataset.form,b=Object.fromEntries(new FormData(form).entries());const submit=form.querySelector('[type=submit]');if(submit)submit.disabled=true;try{
  if(a==='auth'){
-  const dest=state.authMode==='login'?'login':'register',payload=dest==='login'?{identity:b.identity,password:b.password}:{username:b.username,email:b.email,password:b.password};await request('/api/auth/'+dest,{method:'POST',body:JSON.stringify(payload)});state.modal=null;await reload();connectLive();notify(dest==='login'?'Welcome back to Knightfall!':'Welcome to the club!');return;
+  const dest=state.authMode==='login'?'login':'register',payload=dest==='login'?{identity:b.identity,password:b.password}:{username:b.username,email:b.email,password:b.password};await request('/api/auth/'+dest,{method:'POST',body:JSON.stringify(payload)});state.modal=null;await reload(true);connectLive();notify(dest==='login'?'Welcome back to Knightfall!':'Welcome to the club!');return;
  }
- if(a==='join'){await request(`/api/tournaments/${form.dataset.id}/join`,{method:'POST',body:JSON.stringify({code:b.code})});state.modal=null;await reload();notify('Seat confirmed. You are registered for this tournament!');return;}
- if(a==='create-tournament'){b.baseMinutes=+b.baseMinutes;b.incrementSeconds=+b.incrementSeconds;b.maxPlayers=+b.maxPlayers;b.startsAt=new Date(b.startsAt).toISOString();b.endsAt=new Date(b.endsAt).toISOString();await request('/api/admin/tournaments',{method:'POST',body:JSON.stringify(b)});await reload();notify('New tournament published!');state.adminTab='codes';render();return}
- if(a==='create-case'){await request('/api/admin/cases',{method:'POST',body:JSON.stringify(b)});await reload();notify('Evidence case added for review.');return}
- if(a==='review-case'){await request(`/api/admin/cases/${form.dataset.id}/review`,{method:'POST',body:JSON.stringify(b)});state.modal=null;await reload();notify(b.decision==='dismissed'?'Case dismissed.':'Confirmed violation recorded.');return;}
- if(a==='revoke-case'){await request(`/api/admin/cases/${form.dataset.id}/revoke`,{method:'POST',body:JSON.stringify(b)});state.modal=null;await reload();notify('Confirmed warning revoked after appeal review.');return;}
- if(a==='site-settings'){await request('/api/admin/settings',{method:'POST',body:JSON.stringify(b)});await reload();notify('Messenger link updated for the entire site.');return}
- if(a==='verify-prize'){await request('/api/admin/prizes/claim',{method:'POST',body:JSON.stringify(b)});await reload();notify('Prize code verified and marked claimed.');return;}
+ if(a==='join'){await request(`/api/tournaments/${form.dataset.id}/join`,{method:'POST',body:JSON.stringify({code:b.code})});state.modal=null;await reload(true);notify('Seat confirmed. You are registered for this tournament!');return;}
+ if(a==='create-tournament'){b.baseMinutes=+b.baseMinutes;b.incrementSeconds=+b.incrementSeconds;b.maxPlayers=+b.maxPlayers;b.startsAt=new Date(b.startsAt).toISOString();b.endsAt=new Date(b.endsAt).toISOString();await request('/api/admin/tournaments',{method:'POST',body:JSON.stringify(b)});await reload(true);notify('New tournament published!');state.adminTab='codes';render();return}
+ if(a==='create-case'){await request('/api/admin/cases',{method:'POST',body:JSON.stringify(b)});await reload(true);notify('Evidence case added for review.');return}
+ if(a==='review-case'){await request(`/api/admin/cases/${form.dataset.id}/review`,{method:'POST',body:JSON.stringify(b)});state.modal=null;await reload(true);notify(b.decision==='dismissed'?'Case dismissed.':'Confirmed violation recorded.');return;}
+ if(a==='revoke-case'){await request(`/api/admin/cases/${form.dataset.id}/revoke`,{method:'POST',body:JSON.stringify(b)});state.modal=null;await reload(true);notify('Confirmed warning revoked after appeal review.');return;}
+ if(a==='site-settings'){await request('/api/admin/settings',{method:'POST',body:JSON.stringify(b)});await reload(true);notify('Messenger link updated for the entire site.');return}
+ if(a==='verify-prize'){await request('/api/admin/prizes/claim',{method:'POST',body:JSON.stringify(b)});await reload(true);notify('Prize code verified and marked claimed.');return;}
  }catch(err){notify(err.message,true);if(submit)submit.disabled=false;}});
 document.addEventListener('dragstart',e=>{const s=e.target.closest('.square[draggable="true"]');if(!s)return;state.dragFrom=s.dataset.square;state.dragMode=s.dataset.mode;e.dataTransfer.setData('text/plain',s.dataset.square);e.dataTransfer.effectAllowed='move'});
 document.addEventListener('dragover',e=>{if(e.target.closest('.square'))e.preventDefault()});
@@ -186,7 +188,7 @@ function connectLive(){
    if(state.page!=='play'||!state.game?.id||state.game.status!=='active')return;
    const r=await request('/api/games/'+state.game.id),prev=state.game;
    state.game=r.game;state.game._receivedAt=Date.now();
-   if(r.game.status!=='active'){await reload();return}
+   if(r.game.status!=='active'){await reload(true);return}
    if(JSON.stringify(r.game.moves)!==JSON.stringify(prev.moves)||r.game.draw_offer_by!==prev.draw_offer_by)render();
  }catch{}},1300);
 }

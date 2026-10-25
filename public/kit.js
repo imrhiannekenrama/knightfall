@@ -1,11 +1,20 @@
 /* Knightfall Kit — motion behaviors (no libraries). data-attribute powered. */
 window.Kit = (function () {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let io = null, progress = null, raf = 0;
+  let io = null, progress = null, raf = 0, primed = false;
+  /* First page load plays the entrance choreography; afterwards the app
+     re-renders its whole DOM on every click, so reveals settle instantly
+     to avoid replay-flicker on each interaction. */
+  setTimeout(() => { primed = true; }, 2500);
 
   function scanReveals(root) {
-    if (reduced) { root.querySelectorAll('[data-reveal],[data-reveal-group]').forEach(el => el.classList.add('is-in')); return; }
-    root.querySelectorAll('[data-reveal]:not(.is-in),[data-reveal-group]:not(.is-in)').forEach(el => {
+    const els = root.querySelectorAll('[data-reveal]:not(.is-in),[data-reveal-group]:not(.is-in)');
+    if (reduced) { els.forEach(el => el.classList.add('is-in')); return; }
+    if (primed) {
+      els.forEach(el => { el.classList.add('kf-instant', 'is-in'); el.querySelectorAll('[data-count]').forEach(countUp); });
+      return;
+    }
+    els.forEach(el => {
       if (el.dataset.kfWatch) return;
       el.dataset.kfWatch = '1';
       io.observe(el);
@@ -35,7 +44,7 @@ window.Kit = (function () {
       w.style.display = 'inline-block';
       w.style.overflow = 'hidden';
       w.style.transform = 'translateY(110%)';
-      w.style.transition = `transform calc(0.8s * var(--speed)) var(--ease) ${i * parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stagger') || '0.07') || 0.07}s`;
+      w.style.transition = `transform calc(0.8s * var(--speed)) var(--ease) ${i * 0.07}s`;
       requestAnimationFrame(() => requestAnimationFrame(() => { w.style.transform = 'none'; }));
     });
   }
@@ -45,7 +54,7 @@ window.Kit = (function () {
     el.dataset.kfCounted = '1';
     const target = parseFloat(el.dataset.count) || 0;
     const suffix = el.dataset.suffix || '';
-    if (reduced || !target) { el.textContent = target + suffix; return; }
+    if (reduced || primed || !target) { el.textContent = target + suffix; return; }
     const t0 = performance.now(), dur = 1100;
     const step = (t) => {
       const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
