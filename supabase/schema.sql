@@ -36,6 +36,8 @@ create table if not exists tournaments (
   base_minutes integer not null,
   increment_seconds integer not null,
   max_players integer not null,
+  rounds integer not null default 7,
+  system text not null default 'SWISS',
   entry_fee text not null,
   prize_text text not null,
   status text not null default 'scheduled',
@@ -213,3 +215,7 @@ alter table puzzle_solves enable row level security;
 
 -- Done. Now deploy the Vercel side and visit /api/setup to create the
 -- first administrator account (see README section 4).
+
+-- Upgrade for existing installs (safe to re-run):
+alter table tournaments add column if not exists rounds integer not null default 7;
+alter table tournaments add column if not exists system text not null default 'SWISS';

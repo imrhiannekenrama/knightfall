@@ -478,8 +478,12 @@ module.exports = async (req, res) => {
         if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start || end <= now()) err('Set a valid upcoming tournament window');
         const base = Number(b.baseMinutes), inc = Number(b.incrementSeconds), max = Number(b.maxPlayers);
         if (!Number.isInteger(base) || base < 1 || base > 180 || !Number.isInteger(inc) || inc < 0 || inc > 60 || !Number.isInteger(max) || max < 2 || max > 2048) err('Invalid clock or player limit');
+        const rounds = Math.round(Number(b.rounds) || 7);
+        if (!Number.isInteger(rounds) || rounds < 1 || rounds > 25) err('Set a round count between 1 and 25');
+        const system = ['SWISS', 'ROUND_ROBIN', 'KNOCKOUT', 'ARENA'].includes(b.system) ? b.system : 'SWISS';
         const id = uid();
-        await insert('tournaments', { id, name: b.name.trim(), description: b.description.trim(), starts_at: start, ends_at: end, base_minutes: base, increment_seconds: inc, max_players: max, entry_fee: String(b.entryFee || 'Free').slice(0, 60), prize_text: String(b.prizeText || 'To be announced').slice(0, 180), status: 'scheduled', created_at: now() });
+        const row = { id, name: b.name.trim(), description: b.description.trim(), starts_at: start, ends_at: end, base_minutes: base, increment_seconds: inc, max_players: max, rounds, system, entry_fee: String(b.entryFee || 'Free').slice(0, 60), prize_text: String(b.prizeText || 'To be announced').slice(0, 180), status: 'scheduled', created_at: now() };
+        try { await insert('tournaments', row) } catch (e) { if (/rounds|system/i.test(String(e.message))) { delete row.rounds; delete row.system; await insert('tournaments', row) } else throw e }
         return response(res, 201, { ok: true, id });
       }
       if (parts[2] === 'tournaments' && parts.length === 5 && method === 'POST') {
