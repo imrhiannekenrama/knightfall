@@ -172,7 +172,7 @@ function connectLive(){
  stopLive();
  if(!state.boot.user){notifState=null;return}
  notifState=notifState||{w:state.boot.user.stats?.warnings||0,p:0};
- lobbyTimer=setInterval(async()=>{try{
+ lobbyTimer=setInterval(async()=>{try{const ae=document.activeElement;if(state.modal||(ae&&['INPUT','TEXTAREA','SELECT'].includes(ae.tagName)))return;if([...document.querySelectorAll('form')].some(f=>[...f.elements].some(el=>(el.tagName==='INPUT'||el.tagName==='TEXTAREA')&&el.value!==el.defaultValue)))return;
    const n=await request('/api/notifications');
    if(n.warnings>notifState.w)notify(`Fair-play ruling: ${n.warnings} confirmed warning(s). Open your profile for details.`,true);
    if(n.prizes>notifState.p)notify('Your prize vault has an update.');
