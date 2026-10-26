@@ -80,10 +80,9 @@ async function updateWhere(table, data, match) {
 async function sessionUser(req) {
   const cookie = req.headers.cookie || '', token = (cookie.match(/(?:^|;\s*)kf_session=([^;]+)/) || [])[1];
   if (!token) return null;
-  const s = await one(db().from('sessions').select('user_id,expires_at').eq('token_hash', hash(token)));
-  if (!s || s.expires_at <= now()) return null;
-  const u = await one(db().from('users').select('id,email,username,role,xp,created_at').eq('id', s.user_id));
-  return u || null;
+  const s = await one(db().from('sessions').select('expires_at,user:users!sessions_user_id_fkey(id,email,username,role,xp,created_at)').eq('token_hash', hash(token)));
+  if (!s || s.expires_at <= now() || !s.user) return null;
+  return s.user;
 }
 const requireUser = u => { if (!u) err('Please sign in first', 401); return u };
 const adminOnly = u => { requireUser(u); if (u.role !== 'admin') err('Administrator access required', 403) };
@@ -142,7 +141,10 @@ function classifyOpening(moves) {
   return 'Other opening';
 }
 async function userStats(id) {
-  const games = await many(db().from('games').select('*,tournaments(name)').or(`white_id.eq.${id},black_id.eq.${id}`).eq('status', 'finished').order('ended_at', { ascending: false }));
+  const [games, sigRows] = await Promise.all([
+    many(db().from('games').select('id,result,white_id,black_id,moves,tournaments(name)').or(`white_id.eq.${id},black_id.eq.${id}`).eq('status', 'finished').order('ended_at', { ascending: false })),
+    many(db().from('signals').select('id').eq('user_id', id).eq('status', 'confirmed'))
+  ]);
   let wins = 0, losses = 0, draws = 0; const openings = {};
   for (const g of games) {
     const result = g.white_id === id ? g.result : (g.result === '1-0' ? '0-1' : g.result === '0-1' ? '1-0' : '1/2-1/2');
@@ -152,7 +154,7 @@ async function userStats(id) {
     obj.games++; if (result === '1-0') obj.wins++;
     openings[opening] = obj;
   }
-  const wc = (await many(db().from('signals').select('id').eq('user_id', id).eq('status', 'confirmed'))).length;
+  const wc = sigRows.length;
   return { played: games.length, wins, losses, draws, winRate: games.length ? Math.round(wins / games.length * 100) : 0, warnings: wc, openings: Object.values(openings).sort((a, b) => b.games - a.games).slice(0, 6) };
 }
 async function entrants(id) {
@@ -194,12 +196,12 @@ async function closeTournament(id) {
   await db().from('queue').delete().eq('tournament_id', id);
   await awardPrizes(id);
 }
-async function maybeAutoTournaments() {
+async function maybeAutoTournaments(ts) {
   const t = now();
-  const ts = await many(db().from('tournaments').select('*').in('status', ['scheduled', 'live']));
+  ts = ts || (await many(db().from('tournaments').select('*').in('status', ['scheduled', 'live'])));
   for (const x of ts) {
-    if (x.status === 'scheduled' && x.starts_at <= t && x.ends_at > t) await updateWhere('tournaments', { status: 'live' }, { id: x.id, status: 'scheduled' });
-    if (x.status === 'live' && x.ends_at <= t) await closeTournament(x.id);
+    if (x.status === 'scheduled' && x.starts_at <= t && x.ends_at > t) { await updateWhere('tournaments', { status: 'live' }, { id: x.id, status: 'scheduled' }); x.status = 'live' }
+    if (x.status === 'live' && x.ends_at <= t) { await closeTournament(x.id); x.status = 'finished' }
   }
 }
 const GAMES_SELECT = 'id,tournament_id,white_id,black_id,fen,moves,status,result,reason,clock_w,clock_b,turn_started,draw_offer_by,started_at,ended_at';
@@ -223,8 +225,8 @@ async function tourneyView(t, u, detail = false) {
   const queued = u ? queueRows.some(x => x.user_id === u.id) : false;
   const base = { ...t, playerCount: n, joined: joined?.status === 'active', entryStatus: joined?.status || null, activeGameId: active?.id || null, queued };
   if (detail) {
-    base.standings = await standings(t.id);
-    base.games = await many(db().from('games').select('id,result,status,started_at,ended_at,white:users!games_white_id_fkey(username),black:users!games_black_id_fkey(username)').eq('tournament_id', t.id).order('started_at', { ascending: false }).limit(20));
+    const [st, gs] = await Promise.all([standings(t.id), many(db().from('games').select('id,result,status,started_at,ended_at,white:users!games_white_id_fkey(username),black:users!games_black_id_fkey(username)').eq('tournament_id', t.id).order('started_at', { ascending: false }).limit(20))]);
+    base.standings = st; base.games = gs;
   }
   return base;
 }
@@ -295,12 +297,27 @@ module.exports = async (req, res) => {
     }
 
     if (sub === 'bootstrap' && method === 'GET') {
-      await maybeAutoTournaments();
       const ts = await many(db().from('tournaments').select('*').order('starts_at'));
+      await maybeAutoTournaments(ts.filter(x => x.status === 'scheduled' || x.status === 'live'));
+      const [ent, act, que, stats, mlink] = await Promise.all([
+        many(db().from('entries').select('tournament_id,user_id,status')),
+        many(db().from('games').select('id,tournament_id,white_id,black_id').eq('status', 'active')),
+        u ? many(db().from('queue').select('tournament_id,user_id')) : Promise.resolve([]),
+        u ? userStats(u.id) : Promise.resolve(null),
+        messengerLink()
+      ]);
+      const tournaments = ts.map(t => {
+        const joined = u ? ent.find(x => x.tournament_id === t.id && x.user_id === u.id) : null;
+        const active = u ? act.find(g => g.tournament_id === t.id && (g.white_id === u.id || g.black_id === u.id)) : null;
+        return { ...t, playerCount: ent.filter(x => x.tournament_id === t.id && x.status === 'active').length,
+          joined: joined?.status === 'active', entryStatus: joined?.status || null,
+          activeGameId: active?.id || null,
+          queued: u ? que.some(x => x.tournament_id === t.id && x.user_id === u.id) : false };
+      });
       return response(res, 200, {
-        user: u ? { ...u, stats: await userStats(u.id) } : null,
-        tournaments: await Promise.all(ts.map(t => tourneyView(t, u))),
-        messengerUrl: await messengerLink(),
+        user: u ? { ...u, stats } : null,
+        tournaments,
+        messengerUrl: mlink,
         puzzles: puzzlesPublic, serverNow: now()
       });
     }
@@ -486,6 +503,20 @@ module.exports = async (req, res) => {
         try { await insert('tournaments', row) } catch (e) { if (/rounds|system/i.test(String(e.message))) { delete row.rounds; delete row.system; await insert('tournaments', row) } else throw e }
         return response(res, 201, { ok: true, id });
       }
+      if (parts[2] === 'tournaments' && parts[3] && parts[4] === 'delete' && method === 'POST') {
+        const t = await one(db().from('tournaments').select('id,name').eq('id', parts[3]));
+        if (!t) err('Tournament not found', 404);
+        await db().from('signals').delete().eq('tournament_id', t.id);
+        await db().from('games').delete().eq('tournament_id', t.id);
+        await Promise.all([
+          db().from('queue').delete().eq('tournament_id', t.id),
+          db().from('entries').delete().eq('tournament_id', t.id),
+          db().from('join_codes').delete().eq('tournament_id', t.id),
+          db().from('prize_codes').delete().eq('tournament_id', t.id)
+        ]);
+        await db().from('tournaments').delete().eq('id', t.id);
+        return response(res, 200, { ok: true, deleted: t.name });
+      }
       if (parts[2] === 'tournaments' && parts.length === 5 && method === 'POST') {
         const t = await one(db().from('tournaments').select('*').eq('id', parts[3] || ''));
         if (!t) err('Tournament not found', 404);
@@ -566,11 +597,8 @@ module.exports = async (req, res) => {
         ]);
         const isOpen = x => x.status === 'open';
         cases.sort((a, b) => (isOpen(b) ? 1 : 0) - (isOpen(a) ? 1 : 0) || b.created_at - a.created_at);
-        const withCounts = [];
-        for (const t of ts) {
-          const eRows = await many(db().from('entries').select('user_id,status').eq('tournament_id', t.id));
-          withCounts.push({ ...t, codesRemaining: codes.filter(c => c.tournament_id === t.id && !c.used_by).length, playerCount: eRows.filter(x => x.status === 'active').length });
-        }
+        const eAll = await many(db().from('entries').select('tournament_id,user_id,status'));
+        const withCounts = ts.map(t => ({ ...t, codesRemaining: codes.filter(c => c.tournament_id === t.id && !c.used_by).length, playerCount: eAll.filter(x => x.tournament_id === t.id && x.status === 'active').length }));
         return response(res, 200, {
           settings: { messengerUrl: mset?.value || process.env.MESSENGER_URL || 'https://m.me/' },
           tournaments: withCounts,
