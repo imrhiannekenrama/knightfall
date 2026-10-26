@@ -141,9 +141,10 @@ function classifyOpening(moves) {
   return 'Other opening';
 }
 async function userStats(id) {
-  const [games, sigRows] = await Promise.all([
+  const [games, sigRows, prizeRows] = await Promise.all([
     many(db().from('games').select('id,result,white_id,black_id,moves,tournaments(name)').or(`white_id.eq.${id},black_id.eq.${id}`).eq('status', 'finished').order('ended_at', { ascending: false })),
-    many(db().from('signals').select('id').eq('user_id', id).eq('status', 'confirmed'))
+    many(db().from('signals').select('id').eq('user_id', id).eq('status', 'confirmed')),
+    many(db().from('prize_codes').select('id,claimed_at').eq('user_id', id))
   ]);
   let wins = 0, losses = 0, draws = 0; const openings = {};
   for (const g of games) {
@@ -154,8 +155,8 @@ async function userStats(id) {
     obj.games++; if (result === '1-0') obj.wins++;
     openings[opening] = obj;
   }
-  const wc = sigRows.length;
-  return { played: games.length, wins, losses, draws, winRate: games.length ? Math.round(wins / games.length * 100) : 0, warnings: wc, openings: Object.values(openings).sort((a, b) => b.games - a.games).slice(0, 6) };
+  const wc = sigRows.length; const prizes = prizeRows.length;
+  return { played: games.length, wins, losses, draws, winRate: games.length ? Math.round(wins / games.length * 100) : 0, warnings: wc, prizes, openings: Object.values(openings).sort((a, b) => b.games - a.games).slice(0, 6) };
 }
 async function entrants(id) {
   const rows = await many(db().from('entries').select('user_id,status,joined_at,users(username)').eq('tournament_id', id).order('joined_at'));
@@ -225,8 +226,8 @@ async function tourneyView(t, u, detail = false) {
   const queued = u ? queueRows.some(x => x.user_id === u.id) : false;
   const base = { ...t, playerCount: n, joined: joined?.status === 'active', entryStatus: joined?.status || null, activeGameId: active?.id || null, queued };
   if (detail) {
-    const [st, gs] = await Promise.all([standings(t.id), many(db().from('games').select('id,result,status,started_at,ended_at,white:users!games_white_id_fkey(username),black:users!games_black_id_fkey(username)').eq('tournament_id', t.id).order('started_at', { ascending: false }).limit(20))]);
-    base.standings = st; base.games = gs;
+    const [st, gsRaw] = await Promise.all([standings(t.id), many(db().from('games').select('id,result,status,started_at,ended_at,white:users!games_white_id_fkey(username),black:users!games_black_id_fkey(username)').eq('tournament_id', t.id).order('started_at', { ascending: false }).limit(20))]);
+    base.standings = st; base.games = gsRaw.map(x => ({ ...x, white: x.white?.username ?? '?', black: x.black?.username ?? '?' }));
   }
   return base;
 }
@@ -318,9 +319,13 @@ module.exports = async (req, res) => {
         user: u ? { ...u, stats } : null,
         tournaments,
         messengerUrl: mlink,
-        puzzles: puzzlesPublic, serverNow: now()
+        serverNow: now()
       });
     }
+    if (sub === 'puzzles' && method === 'GET') {
+      return response(res, 200, { puzzles: puzzlesPublic }, { 'Cache-Control': 'public, max-age=86400' });
+    }
+
     if (sub === 'notifications' && method === 'GET') {
       if (!u) return response(res, 200, { warnings: 0, prizes: 0, serverNow: now() });
       const wc = (await many(db().from('signals').select('id').eq('user_id', u.id).eq('status', 'confirmed'))).length;
