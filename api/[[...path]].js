@@ -26,6 +26,7 @@ const key = () => crypto.createHash('sha256').update(process.env.APP_SECRET).dig
 const hash = t => crypto.createHmac('sha256', key()).update(t).digest('hex');
 const randomCode = p => p + '-' + crypto.randomBytes(6).toString('hex').toUpperCase();
 function err(message, status = 400) { const e = new Error(message); e.status = status; throw e }
+const isUuid = v => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 function response(res, status, data, headers = {}) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...headers });
   res.end(json(data));
@@ -380,7 +381,8 @@ module.exports = async (req, res) => {
         const ts = await many(db().from('tournaments').select('*').order('starts_at'));
         return response(res, 200, { tournaments: await Promise.all(ts.map(t => tourneyView(t, u))) });
       }
-      const t = await one(db().from('tournaments').select('*').eq('id', parts[2] || ''));
+      if (!isUuid(parts[2])) err('Tournament not found', 404);
+      const t = await one(db().from('tournaments').select('*').eq('id', parts[2]));
       if (!t) err('Tournament not found', 404);
       if (parts.length === 3 && method === 'GET') { await maybeAutoTournaments(); const fresh = await one(db().from('tournaments').select('*').eq('id', t.id)); return response(res, 200, { tournament: await tourneyView(fresh, u, true) }); }
       if (parts[3] === 'join' && method === 'POST') {
@@ -412,7 +414,8 @@ module.exports = async (req, res) => {
 
     if (sub === 'games') {
       requireUser(u);
-      const g = await one(db().from('games').select(GAMES_SELECT).eq('id', parts[2] || ''));
+      if (!isUuid(parts[2])) err('Game not found', 404);
+      const g = await one(db().from('games').select(GAMES_SELECT).eq('id', parts[2]));
       if (!g) err('Game not found', 404);
       if (parts.length === 3 && method === 'GET') {
         const flagged = await flagIfNeeded(g);
